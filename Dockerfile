@@ -1,19 +1,9 @@
-FROM node:20-bookworm
+FROM mcr.microsoft.com/playwright:v1.58.1-jammy
 
-# Install Chrome dependencies + Xvfb
-RUN apt-get update && apt-get install -y \
-    wget gnupg2 ca-certificates \
-    xvfb \
-    fonts-liberation fonts-noto-color-emoji \
-    libasound2 libatk-bridge2.0-0 libatk1.0-0 libcups2 \
-    libdbus-1-3 libdrm2 libgbm1 libgtk-3-0 libnspr4 libnss3 \
-    libxcomposite1 libxdamage1 libxfixes3 libxrandr2 libxshmfence1 \
-    python3 python3-pip \
-    && rm -rf /var/lib/apt/lists/*
-
-# Install Chrome for Testing (stable)
-RUN npx @puppeteer/browsers install chrome@stable --path /opt/chrome \
-    && ln -s $(find /opt/chrome -name chrome -type f | head -1) /usr/local/bin/chrome
+# Node.js already included in playwright image
+# Chromium already included in playwright image
+# Install Xvfb
+RUN apt-get update && apt-get install -y xvfb && rm -rf /var/lib/apt/lists/*
 
 # Install agent-browser globally
 RUN npm install -g agent-browser@latest
