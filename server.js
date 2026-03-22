@@ -48,7 +48,7 @@ function browserCmd(cmd, profileName, timeoutSec = 90) {
 // Close browser for a profile
 function browserClose(profileName) {
   try {
-    execSync('agent-browser --close', { timeout: 10000, encoding: 'utf-8' });
+    execSync('pkill -f chromium || true', { timeout: 10000, encoding: 'utf-8', shell: true });
   } catch (e) { /* ignore */ }
 }
 
@@ -122,13 +122,13 @@ app.post('/setup', auth, async (req, res) => {
 
   try {
     browserClose(profile);
-    // Launch headed Chrome via agent-browser - visible on VNC
-    const cmd = `agent-browser --profile ${profileDir} --headed --args "${BROWSER_ARGS}" --user-agent "${USER_AGENT}" "navigate to https://accounts.google.com"`;
-    exec(cmd, { timeout: 300000 }); // 5 min timeout, don't wait
+    // Launch Chromium directly (stays open for user interaction via VNC)
+    const chromeBin = process.env.CHROME_BIN || 'chromium';
+    const cmd = `${chromeBin} --user-data-dir=${profileDir} --display=:99 ${BROWSER_ARGS} --user-agent="${USER_AGENT}" --no-sandbox https://accounts.google.com`;
+    exec(cmd, { timeout: 600000, env: { ...process.env, DISPLAY: ':99' } }); // 10 min timeout
     res.json({
       success: true,
-      message: `Chrome opened for profile "${profile}". Connect via VNC (port 6080) to log in to Google. The browser will stay open for 5 minutes.`,
-      vncUrl: 'http://<VPS_IP>:6080/vnc.html',
+      message: `Chrome opened for profile "${profile}". Use VNC to log in to Google. Browser stays open for 10 minutes.`,
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
