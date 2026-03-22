@@ -1,9 +1,10 @@
 FROM node:20-slim
 
-# Install Chromium and Xvfb (much lighter than full Chrome)
+# Install Chromium, Xvfb, x11vnc, noVNC (web-based VNC client)
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    chromium xvfb \
+    chromium xvfb x11vnc \
     fonts-liberation fonts-noto-color-emoji \
+    novnc websockify \
     && rm -rf /var/lib/apt/lists/*
 
 # Tell Puppeteer/agent-browser to use system Chromium
@@ -15,10 +16,12 @@ ENV CHROME_BIN=/usr/bin/chromium
 RUN npm install -g agent-browser@latest
 
 WORKDIR /app
-COPY package.json server.js ./
+COPY package.json server.js start.sh ./
+RUN chmod +x start.sh
 RUN npm install
 RUN mkdir -p /app/profiles
 
-EXPOSE 3000
+# 3000 = API, 6080 = noVNC web interface
+EXPOSE 3000 6080
 
-CMD ["bash", "-c", "Xvfb :99 -screen 0 1920x1080x24 -nolisten tcp &>/dev/null & export DISPLAY=:99 && node server.js"]
+CMD ["./start.sh"]

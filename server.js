@@ -108,6 +108,38 @@ app.get('/health', (req, res) => {
   });
 });
 
+// Open headed Chrome for Google login (use via VNC)
+app.post('/setup', auth, async (req, res) => {
+  const { profileName } = req.body;
+  if (!profileName) return res.status(400).json({ error: 'profileName required' });
+
+  const profile = profileName.replace(/[^a-zA-Z0-9_-]/g, '');
+  const profileDir = path.join(PROFILES_DIR, profile);
+  if (!fs.existsSync(profileDir)) fs.mkdirSync(profileDir, { recursive: true });
+
+  try {
+    browserClose(profile);
+    // Launch headed Chrome via agent-browser - visible on VNC
+    const cmd = `agent-browser --profile ${profileDir} --headed --args "${BROWSER_ARGS}" --user-agent "${USER_AGENT}" "navigate to https://accounts.google.com"`;
+    exec(cmd, { timeout: 300000 }); // 5 min timeout, don't wait
+    res.json({
+      success: true,
+      message: `Chrome opened for profile "${profile}". Connect via VNC (port 6080) to log in to Google. The browser will stay open for 5 minutes.`,
+      vncUrl: 'http://<VPS_IP>:6080/vnc.html',
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Close browser after setup
+app.post('/setup-done', auth, async (req, res) => {
+  const { profileName } = req.body;
+  if (!profileName) return res.status(400).json({ error: 'profileName required' });
+  browserClose(profileName.replace(/[^a-zA-Z0-9_-]/g, ''));
+  res.json({ success: true, message: 'Browser closed, session saved.' });
+});
+
 // Scan reviews for a business
 app.post('/scan', auth, async (req, res) => {
   const { businessName, searchUrl, profileName } = req.body;
