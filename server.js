@@ -338,10 +338,12 @@ app.get('/vnc', auth, (req, res) => {
 <html><head><title>Agent Browser VNC</title>
 <style>body{margin:0;background:#1a1a2e;display:flex;flex-direction:column;height:100vh}
 #status{color:#0f0;font-family:monospace;padding:8px;background:#111}
-#screen{flex:1;overflow:hidden}
-canvas{width:100%;height:100%}</style>
+#screen{flex:1;overflow:hidden}</style>
+</head><body>
+<div id="status">Loading noVNC...</div>
+<div id="screen"></div>
 <script type="module">
-import RFB from '/novnc/lib/rfb.js';
+import RFB from '/novnc/core/rfb.js';
 const wsUrl = '${wsProtocol}://${host}/websockify?apiKey=${req.query.apiKey || ''}';
 document.getElementById('status').textContent = 'Connecting...';
 try {
@@ -349,23 +351,20 @@ try {
   rfb.scaleViewport = true;
   rfb.resizeSession = true;
   rfb.addEventListener('connect', () => {
-    document.getElementById('status').textContent = 'Connected - Log in to Google in the browser below';
+    document.getElementById('status').textContent = 'Connected - Log in to Google below';
   });
   rfb.addEventListener('disconnect', (e) => {
-    document.getElementById('status').textContent = 'Disconnected: ' + (e.detail.clean ? 'clean' : 'error');
+    document.getElementById('status').textContent = 'Disconnected';
   });
 } catch(e) {
   document.getElementById('status').textContent = 'Error: ' + e.message;
 }
 </script>
-</head><body>
-<div id="status">Loading noVNC...</div>
-<div id="screen"></div>
 </body></html>`);
 });
 
-// Serve noVNC static files from npm package
-app.use('/novnc', express.static(path.join(__dirname, 'node_modules', '@novnc', 'novnc')));
+// Serve noVNC static files (downloaded from GitHub in Dockerfile)
+app.use('/novnc', express.static(path.join(__dirname, 'novnc')));
 
 // Create HTTP server (needed for WebSocket upgrade)
 const server = http.createServer(app);
