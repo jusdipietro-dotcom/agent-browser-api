@@ -341,7 +341,7 @@ app.get('/vnc', auth, (req, res) => {
 #screen{flex:1;overflow:hidden}
 canvas{width:100%;height:100%}</style>
 <script type="module">
-import RFB from '/novnc/core/rfb.js';
+import RFB from '/novnc/lib/rfb.js';
 const wsUrl = '${wsProtocol}://${host}/websockify?apiKey=${req.query.apiKey || ''}';
 document.getElementById('status').textContent = 'Connecting...';
 try {
