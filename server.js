@@ -343,7 +343,7 @@ app.get('/vnc', auth, (req, res) => {
 <div id="status">Loading noVNC...</div>
 <div id="screen"></div>
 <script type="module">
-import RFB from '/novnc/core/rfb.js';
+import RFB from 'https://cdn.jsdelivr.net/gh/novnc/noVNC@v1.5.0/core/rfb.js';
 const wsUrl = '${wsProtocol}://${host}/websockify?apiKey=${req.query.apiKey || ''}';
 document.getElementById('status').textContent = 'Connecting...';
 try {
@@ -363,8 +363,7 @@ try {
 </body></html>`);
 });
 
-// Serve noVNC static files (downloaded from GitHub in Dockerfile)
-app.use('/novnc', express.static(path.join(__dirname, 'novnc')));
+// noVNC served from jsDelivr CDN (no local files needed)
 
 // Create HTTP server (needed for WebSocket upgrade)
 const server = http.createServer(app);
