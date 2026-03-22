@@ -3,6 +3,9 @@ const { execSync, exec } = require('child_process');
 const { OpenAI } = require('openai');
 const fs = require('fs');
 const path = require('path');
+const http = require('http');
+const net = require('net');
+const WebSocket = require('ws');
 
 const app = express();
 app.use(express.json());
@@ -327,8 +330,85 @@ app.post('/auto', auth, async (req, res) => {
   }
 });
 
-app.listen(PORT, () => {
+// Serve noVNC client page
+app.get('/vnc', auth, (req, res) => {
+  const wsProtocol = req.headers['x-forwarded-proto'] === 'https' ? 'wss' : 'ws';
+  const host = req.headers.host;
+  res.send(`<!DOCTYPE html>
+<html><head><title>Agent Browser VNC</title>
+<style>body{margin:0;background:#1a1a2e;display:flex;flex-direction:column;height:100vh}
+#status{color:#0f0;font-family:monospace;padding:8px;background:#111}
+#screen{flex:1;overflow:hidden}
+canvas{width:100%;height:100%}</style>
+<script src="https://cdn.jsdelivr.net/npm/@nicedoc/novnc@1.3.0/dist/novnc.min.js"></script>
+</head><body>
+<div id="status">Connecting to VNC...</div>
+<div id="screen"></div>
+<script>
+// Simple RFB connection using noVNC from CDN
+const wsUrl = '${wsProtocol}://${host}/websockify?apiKey=${req.query.apiKey || ''}';
+document.getElementById('status').textContent = 'Connecting to ' + wsUrl;
+try {
+  const rfb = new RFB(document.getElementById('screen'), wsUrl);
+  rfb.scaleViewport = true;
+  rfb.resizeSession = true;
+  rfb.addEventListener('connect', () => {
+    document.getElementById('status').textContent = 'Connected - Log in to Google in the browser below';
+  });
+  rfb.addEventListener('disconnect', (e) => {
+    document.getElementById('status').textContent = 'Disconnected: ' + (e.detail.clean ? 'clean' : 'error');
+  });
+} catch(e) {
+  document.getElementById('status').textContent = 'Error: ' + e.message;
+}
+</script></body></html>`);
+});
+
+// Serve noVNC static files from CDN - no local files needed
+app.use('/novnc', express.static(path.join(__dirname, 'node_modules', '@novnc', 'novnc')));
+
+// Create HTTP server (needed for WebSocket upgrade)
+const server = http.createServer(app);
+
+// WebSocket proxy: /websockify -> VNC on localhost:5900
+const wss = new WebSocket.Server({ noServer: true });
+
+server.on('upgrade', (req, socket, head) => {
+  if (req.url.startsWith('/websockify')) {
+    // Check API key
+    const url = new URL(req.url, 'http://localhost');
+    const apiKey = url.searchParams.get('apiKey');
+    if (apiKey !== API_KEY) {
+      socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
+      socket.destroy();
+      return;
+    }
+
+    wss.handleUpgrade(req, socket, head, (ws) => {
+      // Connect to VNC server
+      const vnc = net.connect(5900, 'localhost', () => {
+        console.log('VNC proxy connected');
+      });
+
+      vnc.on('data', (data) => {
+        try { ws.send(data); } catch(e) {}
+      });
+
+      ws.on('message', (data) => {
+        try { vnc.write(data); } catch(e) {}
+      });
+
+      ws.on('close', () => vnc.end());
+      vnc.on('close', () => ws.close());
+      vnc.on('error', (e) => { console.error('VNC error:', e.message); ws.close(); });
+      ws.on('error', (e) => { console.error('WS error:', e.message); vnc.end(); });
+    });
+  }
+});
+
+server.listen(PORT, () => {
   console.log(`agent-browser-api running on port ${PORT}`);
   console.log(`Display: ${process.env.DISPLAY}`);
   console.log(`Profiles dir: ${PROFILES_DIR}`);
+  console.log(`VNC: /vnc?apiKey=<key> | WebSocket proxy: /websockify?apiKey=<key>`);
 });

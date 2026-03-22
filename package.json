@@ -5,6 +5,9 @@
   "main": "server.js",
   "dependencies": {
     "express": "^4.21.0",
-    "openai": "^4.70.0"
+    "@novnc/novnc": "^1.5.0",
+    "ws": "^8.18.0",
+    "openai": "^4.70.0",
+    "net": "^1.0.2"
   }
 }
