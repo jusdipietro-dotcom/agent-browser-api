@@ -340,14 +340,10 @@ app.get('/vnc', auth, (req, res) => {
 #status{color:#0f0;font-family:monospace;padding:8px;background:#111}
 #screen{flex:1;overflow:hidden}
 canvas{width:100%;height:100%}</style>
-<script src="https://cdn.jsdelivr.net/npm/@nicedoc/novnc@1.3.0/dist/novnc.min.js"></script>
-</head><body>
-<div id="status">Connecting to VNC...</div>
-<div id="screen"></div>
-<script>
-// Simple RFB connection using noVNC from CDN
+<script type="module">
+import RFB from 'https://cdn.jsdelivr.net/npm/@novnc/novnc@1.5.0/core/rfb.js';
 const wsUrl = '${wsProtocol}://${host}/websockify?apiKey=${req.query.apiKey || ''}';
-document.getElementById('status').textContent = 'Connecting to ' + wsUrl;
+document.getElementById('status').textContent = 'Connecting...';
 try {
   const rfb = new RFB(document.getElementById('screen'), wsUrl);
   rfb.scaleViewport = true;
@@ -361,7 +357,11 @@ try {
 } catch(e) {
   document.getElementById('status').textContent = 'Error: ' + e.message;
 }
-</script></body></html>`);
+</script>
+</head><body>
+<div id="status">Loading noVNC...</div>
+<div id="screen"></div>
+</body></html>`);
 });
 
 // Serve noVNC static files from CDN - no local files needed
