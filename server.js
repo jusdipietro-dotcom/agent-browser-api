@@ -90,8 +90,9 @@ app.get('/health', (req, res) => {
   } catch (e) { abVersion = 'not found'; }
 
   let chromeOk = false;
+  let chromeVersion = 'not found';
   try {
-    execSync('chrome --version', { encoding: 'utf-8', timeout: 5000 });
+    chromeVersion = execSync('chromium --version || chrome --version', { encoding: 'utf-8', timeout: 5000, shell: true }).trim();
     chromeOk = true;
   } catch (e) { /* */ }
 
@@ -99,6 +100,7 @@ app.get('/health', (req, res) => {
     status: 'ok',
     agentBrowser: abVersion,
     chrome: chromeOk,
+    chromeVersion,
     display: process.env.DISPLAY || 'not set',
     profiles: fs.readdirSync(PROFILES_DIR).filter(f =>
       fs.statSync(path.join(PROFILES_DIR, f)).isDirectory()
