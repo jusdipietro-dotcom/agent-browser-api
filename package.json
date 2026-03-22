@@ -1,0 +1,10 @@
+{
+  "name": "agent-browser-api",
+  "version": "1.0.0",
+  "description": "HTTP API wrapper for agent-browser on VPS",
+  "main": "server.js",
+  "dependencies": {
+    "express": "^4.21.0",
+    "openai": "^4.70.0"
+  }
+}
