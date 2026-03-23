@@ -45,8 +45,18 @@ function browserCmd(cmd, profileName, timeoutSec = 90) {
   }
 }
 
-// Close browser for a profile
+// Close browser for a specific profile
 function browserClose(profileName) {
+  try {
+    const profile = profileName.replace(/[^a-zA-Z0-9_-]/g, '');
+    const profileDir = path.join(PROFILES_DIR, profile);
+    // Kill only chromium processes using this profile's data dir
+    execSync(`pkill -f "user-data-dir=${profileDir}" || true`, { timeout: 10000, encoding: 'utf-8', shell: true });
+  } catch (e) { /* ignore */ }
+}
+
+// Close ALL browser processes (for cleanup)
+function browserCloseAll() {
   try {
     execSync('pkill -f chromium || true', { timeout: 10000, encoding: 'utf-8', shell: true });
   } catch (e) { /* ignore */ }
@@ -85,8 +95,10 @@ Respondé SOLO con el texto de la respuesta, sin comillas ni prefijos.`;
   }).then(r => r.choices[0].message.content.trim());
 }
 
-// Health check
+// Health check (public: minimal info, authed: full details)
 app.get('/health', (req, res) => {
+  const key = req.headers['x-api-key'] || req.query.apiKey;
+  const isAuthed = key === API_KEY;
   let abVersion = 'unknown';
   try {
     abVersion = execSync('agent-browser --version', { encoding: 'utf-8', timeout: 5000 }).trim();
@@ -99,16 +111,19 @@ app.get('/health', (req, res) => {
     chromeOk = true;
   } catch (e) { /* */ }
 
-  res.json({
-    status: 'ok',
-    agentBrowser: abVersion,
-    chrome: chromeOk,
-    chromeVersion,
-    display: process.env.DISPLAY || 'not set',
-    profiles: fs.readdirSync(PROFILES_DIR).filter(f =>
-      fs.statSync(path.join(PROFILES_DIR, f)).isDirectory()
-    ),
-  });
+  const response = { status: 'ok' };
+  if (isAuthed) {
+    response.agentBrowser = abVersion;
+    response.chrome = chromeOk;
+    response.chromeVersion = chromeVersion;
+    response.display = process.env.DISPLAY || 'not set';
+    try {
+      response.profiles = fs.readdirSync(PROFILES_DIR).filter(f =>
+        fs.statSync(path.join(PROFILES_DIR, f)).isDirectory()
+      );
+    } catch (e) { response.profiles = []; }
+  }
+  res.json(response);
 });
 
 // Open headed Chrome for Google login (use via VNC)
